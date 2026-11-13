@@ -27,7 +27,10 @@ static struct wl_shm *shm = NULL;
 static struct wl_shell *shell = NULL;
 static struct wl_surface *surface = NULL;
 static struct wl_shell_surface *shell_surface = NULL;
+static struct wl_seat *seat = NULL;
 static struct wl_buffer *buffer = NULL;
+
+static struct wl_pointer *pointer = NULL;
 
 /* Registry handling */
 static void registry_handler(void *data, struct wl_registry *registry,
@@ -38,6 +41,8 @@ static void registry_handler(void *data, struct wl_registry *registry,
         shm = wl_registry_bind(registry, id, &wl_shm_interface, 1);
     } else if (strcmp(interface, "wl_shell") == 0) {
         shell = wl_registry_bind(registry, id, &wl_shell_interface, 1);
+    } else if (strcmp(interface, "wl_seat") == 0) {
+        seat = wl_registry_bind(registry, id, &wl_seat_interface, 5);
     }
 }
 
@@ -78,6 +83,32 @@ static void shell_surface_configure(void *data, struct wl_shell_surface *shell_s
 static const struct wl_shell_surface_listener shell_surface_listener = {
     .ping = shell_surface_ping,
     .configure = shell_surface_configure,
+};
+
+static void pointer_enter(void *data, struct wl_pointer *pointer,
+                          uint32_t serial, struct wl_surface *surface,
+                          wl_fixed_t sx, wl_fixed_t sy) {}
+static void pointer_leave(void *data, struct wl_pointer *pointer,
+                          uint32_t serial, struct wl_surface *surface) {}
+static void pointer_motion(void *data, struct wl_pointer *pointer,
+                          uint32_t time, wl_fixed_t sx, wl_fixed_t sy) {}
+static void pointer_button(void *data, struct wl_pointer *pointer,
+                           uint32_t serial, uint32_t time, uint32_t button,
+                           uint32_t state) {
+    if (state == WL_POINTER_BUTTON_STATE_PRESSED && seat) {
+        wl_shell_surface_move(shell_surface, seat, serial);
+    }
+}
+static void pointer_axis(void *data, struct wl_pointer *pointer,
+                         uint32_t time, uint32_t axis, wl_fixed_t value) {}
+static void pointer_frame(void *data, struct wl_pointer *pointer) {}
+static const struct wl_pointer_listener pointer_listener = {
+    .enter = pointer_enter,
+    .leave = pointer_leave,
+    .motion = pointer_motion,
+    .button = pointer_button,
+    .axis = pointer_axis,
+    .frame = pointer_frame,
 };
 
 /* Helper to create a simple solid‑color shm buffer */
@@ -157,6 +188,13 @@ int main(void) {
     wl_shell_surface_add_listener(shell_surface, &shell_surface_listener, NULL);
     wl_shell_surface_set_toplevel(shell_surface);
     wl_shell_surface_set_title(shell_surface, "Wayland Minimal Demo");
+    /* Acquire pointer to enable moving the window via click */
+    if (seat) {
+        pointer = wl_seat_get_pointer(seat);
+        if (pointer) {
+            wl_pointer_add_listener(pointer, &pointer_listener, NULL);
+        }
+    }
 
     /* Create a simple 200×200 solid‑color buffer and attach it */
     buffer = create_shm_buffer(200, 200, NULL);
