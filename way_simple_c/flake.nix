@@ -30,12 +30,12 @@
         ];
         # Let the default C compiler (`cc`) build the program.
         buildPhase = ''
-          cc wayland_app.c -o wayland_app $(pkg-config --cflags --libs wayland-client xkbcommon) -lrt -lm
+          cc wayland_app.c -o wayland_app $(pkg-config --cflags --libs wayland-client xkbcommon) -lm
         '';
         installPhase = ''
           mkdir -p $out/bin 
           cp wayland_app $out/bin/
-          '';
+        '';
       };
     };
 }

@@ -1,0 +1,4 @@
+wayland_app
+*.o
+compile_commands.json
+result
