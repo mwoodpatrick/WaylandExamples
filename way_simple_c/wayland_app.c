@@ -103,7 +103,7 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
         } else if (button == BTN_RIGHT) {
             // Start interactive resize from the bottom‑right corner
             wl_shell_surface_resize(shell_surface, seat, serial,
-                                      WL_SHELL_SURFACE_RESIZE_LEFT | WL_SHELL_SURFACE_RESIZE_TOP);
+                                      WL_SHELL_SURFACE_RESIZE_RIGHT | WL_SHELL_SURFACE_RESIZE_BOTTOM);
         }
     }
 }
