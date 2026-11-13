@@ -17,6 +17,7 @@
 #include <wayland-client-protocol.h>
 #include <xkbcommon/xkbcommon.h>
 // Using the legacy wl_shell protocol to avoid needing generated xdg-shell headers.
+static struct wl_buffer *create_shm_buffer(int width, int height, uint32_t *out_stride);
 
 /* Global Wayland objects */
 static struct wl_display *display = NULL;
@@ -49,6 +50,36 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = registry_remover,
 };
 
+static void shell_surface_ping(void *data, struct wl_shell_surface *shell_surface, uint32_t serial) {
+    wl_shell_surface_pong(shell_surface, serial);
+}
+
+static void shell_surface_configure(void *data, struct wl_shell_surface *shell_surface,
+                                   uint32_t edges, int32_t width, int32_t height) {
+    (void)data; (void)edges; // unused for this demo
+    printf("Comfiguring window width=%dxheight=%d\n", width, height);
+    if (width > 0 && height > 0) {
+        if (buffer) {
+            // Destroy the old buffer; the associated shm pool was already destroyed inside create_shm_buffer()
+            wl_buffer_destroy(buffer);
+            buffer = NULL;
+        }
+        buffer = create_shm_buffer(width, height, NULL);
+        if (!buffer) {
+            fprintf(stderr, "Failed to recreate buffer for resize.\n");
+            return;
+        }
+        wl_surface_attach(surface, buffer, 0, 0);
+        wl_surface_damage(surface, 0, 0, width, height);
+        wl_surface_commit(surface);
+    }
+}
+
+static const struct wl_shell_surface_listener shell_surface_listener = {
+    .ping = shell_surface_ping,
+    .configure = shell_surface_configure,
+};
+
 /* Helper to create a simple solid‑color shm buffer */
 static struct wl_buffer *create_shm_buffer(int width, int height, uint32_t *out_stride) {
     int stride = width * 4; // ARGB8888
@@ -73,7 +104,7 @@ static struct wl_buffer *create_shm_buffer(int width, int height, uint32_t *out_
     // Fill with a light‑gray colour (0xFFCCCCCC)
     uint32_t *pixels = data;
     for (int i = 0; i < width * height; ++i) {
-        pixels[i] = 0xFFCCCCCC;
+        pixels[i] = 0xFFFF0000; // opaque red
     }
     munmap(data, size);
 
@@ -123,6 +154,7 @@ int main(void) {
         wl_display_disconnect(display);
         return EXIT_FAILURE;
     }
+    wl_shell_surface_add_listener(shell_surface, &shell_surface_listener, NULL);
     wl_shell_surface_set_toplevel(shell_surface);
     wl_shell_surface_set_title(shell_surface, "Wayland Minimal Demo");
 
