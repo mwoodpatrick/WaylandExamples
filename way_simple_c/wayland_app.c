@@ -12,10 +12,10 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <stdbool.h>
 #include <wayland-client.h>
 #include <wayland-client-protocol.h>
-#include <xkbcommon/xkbcommon.h>
+#include <linux/input.h>
 // Using the legacy wl_shell protocol to avoid needing generated xdg-shell headers.
 static struct wl_buffer *create_shm_buffer(int width, int height, uint32_t *out_stride);
 
@@ -31,6 +31,8 @@ static struct wl_seat *seat = NULL;
 static struct wl_buffer *buffer = NULL;
 
 static struct wl_pointer *pointer = NULL;
+static struct wl_keyboard *keyboard = NULL;
+static bool running = true;
 
 /* Registry handling */
 static void registry_handler(void *data, struct wl_registry *registry,
@@ -96,12 +98,46 @@ static void pointer_button(void *data, struct wl_pointer *pointer,
                            uint32_t serial, uint32_t time, uint32_t button,
                            uint32_t state) {
     if (state == WL_POINTER_BUTTON_STATE_PRESSED && seat) {
-        wl_shell_surface_move(shell_surface, seat, serial);
+        if (button == BTN_LEFT) {
+            wl_shell_surface_move(shell_surface, seat, serial);
+        } else if (button == BTN_RIGHT) {
+            // Start interactive resize from the bottom‑right corner
+            wl_shell_surface_resize(shell_surface, seat, serial,
+                                      WL_SHELL_SURFACE_RESIZE_LEFT | WL_SHELL_SURFACE_RESIZE_TOP);
+        }
     }
 }
 static void pointer_axis(void *data, struct wl_pointer *pointer,
                          uint32_t time, uint32_t axis, wl_fixed_t value) {}
 static void pointer_frame(void *data, struct wl_pointer *pointer) {}
+static void keyboard_keymap(void *data, struct wl_keyboard *keyboard,
+                          uint32_t format, int fd, uint32_t size) {}
+static void keyboard_enter(void *data, struct wl_keyboard *keyboard,
+                           uint32_t serial, struct wl_surface *surface,
+                           struct wl_array *keys) {}
+static void keyboard_leave(void *data, struct wl_keyboard *keyboard,
+                           uint32_t serial, struct wl_surface *surface) {}
+static void keyboard_key(void *data, struct wl_keyboard *keyboard,
+                        uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        running = false; // exit on any key press (e.g., Escape)
+    }
+}
+static void keyboard_modifiers(void *data, struct wl_keyboard *keyboard,
+                               uint32_t serial, uint32_t mods_depressed,
+                               uint32_t mods_latched, uint32_t mods_locked,
+                               uint32_t group) {}
+static void keyboard_repeat_info(void *data, struct wl_keyboard *keyboard,
+                                 int32_t rate, int32_t delay) {}
+static const struct wl_keyboard_listener keyboard_listener = {
+    .keymap = keyboard_keymap,
+    .enter = keyboard_enter,
+    .leave = keyboard_leave,
+    .key = keyboard_key,
+    .modifiers = keyboard_modifiers,
+    .repeat_info = keyboard_repeat_info,
+};
+
 static const struct wl_pointer_listener pointer_listener = {
     .enter = pointer_enter,
     .leave = pointer_leave,
@@ -188,11 +224,15 @@ int main(void) {
     wl_shell_surface_add_listener(shell_surface, &shell_surface_listener, NULL);
     wl_shell_surface_set_toplevel(shell_surface);
     wl_shell_surface_set_title(shell_surface, "Wayland Minimal Demo");
-    /* Acquire pointer to enable moving the window via click */
+    /* Acquire pointer and keyboard to enable moving and resizing the window via click */
     if (seat) {
         pointer = wl_seat_get_pointer(seat);
         if (pointer) {
             wl_pointer_add_listener(pointer, &pointer_listener, NULL);
+        }
+        keyboard = wl_seat_get_keyboard(seat);
+        if (keyboard) {
+            wl_keyboard_add_listener(keyboard, &keyboard_listener, NULL);
         }
     }
 
@@ -209,15 +249,17 @@ int main(void) {
     wl_surface_damage(surface, 0, 0, 200, 200);
     wl_surface_commit(surface);
 
-    printf("Wayland window visible – press Ctrl‑C to quit.\n");
+    printf("Wayland window visible – press Escape to quit.\n");
 
     /* Main event loop */
-    while (wl_display_dispatch(display) != -1) {
+    while (running && wl_display_dispatch(display) != -1) {
         /* No extra handling needed */
     }
 
     /* Cleanup */
-    wl_buffer_destroy(buffer);
+    if (buffer) wl_buffer_destroy(buffer);
+    if (pointer) wl_pointer_destroy(pointer);
+    if (keyboard) wl_keyboard_destroy(keyboard);
     wl_shell_surface_destroy(shell_surface);
     wl_surface_destroy(surface);
     wl_shell_destroy(shell);
