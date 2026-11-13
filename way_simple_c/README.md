@@ -1,7 +1,22 @@
 Wayland minimal client example
+
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Build](#build)
+  - [Plain GCC](#plain-gcc)
+  - [Makefile](#makefile)
+  - [Nix](#nix)
+- [Run](#run)
+- [What the example demonstrates](#what-the-example-demonstrates)
+- [Extending the example](#extending-the-example)
+- [Generating a compilation database](#generating-a-compilation-database)
+- [License](#license)
 ===============================
 
-A tiny C program that connects to a Wayland compositor, opens a surface, and runs a simple event loop. The code deliberately avoids heavyweight toolkits (GTK, Qt) and uses only the core Wayland client library and **xkbcommon**.
+A tiny C program that connects to a Wayland compositor, opens a surface, 
+and runs a simple event loop. The code deliberately avoids 
+heavyweight toolkits (GTK, Qt) and uses only the core Wayland client library 
+and **xkbcommon**, XDG shell, and shared memory for drawing.
 
 ---
 
@@ -62,6 +77,8 @@ If the compositor does not expose `wl_compositor`, the program exits with an err
 - Basic Wayland connection workflow (`wl_display_connect`, `wl_display_get_registry`).
 - Registry handling to bind required globals.
 - Surface creation and destruction.
+- Uses the XDG‑shell protocol 
+- Uses `wl_shm` for simple drawing.
 - Simple event loop using `wl_display_dispatch_pending`.
 ---
 

@@ -1,5 +1,23 @@
 # Plan for Improving `way_simple_c` Example
 
+**Plan to address the README issues and improve the GCC command**
+
+| # | Goal | Action | Neovim command / shell step |
+|---|------|--------|-----------------------------|
+| 1 | Fix the title underline after the new TOC block | The underline must match the length of the title text (`Wayland minimal client example`). Re‑insert the correct underline (30 `=` characters). | `:%s/^ Wayland minimal client example$/Wayland minimal client example/`<br>`:put =repeat('=',len('Wayland minimal client example'))`<br>`dd` *(delete the old underline line)* |
+| 2 | Ensure all TOC links point to existing headings | Verify that every anchor (`#prerequisites`, `#plain-gcc`, etc.) matches a heading in the file (case‑insensitive, spaces → hyphens). Add missing headings or adjust the TOC entries. | `:/## Prerequisites` → confirm exists; repeat for each section. |
+| 3 | Add a short tagline / version badge (optional) | Place a badge line after the title, e.g., `![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)`. | `:2put ='![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)'` |
+| 4 | Update the GCC build command with stronger warning flags | Replace the current command on line 26 with `gcc wayland_app.c -o wayland_app $(pkg-config --cflags --libs wayland-client xkbcommon) -Wall -Wextra -lm`. | `:26s/.*/gcc wayland_app.c -o wayland_app $(pkg-config --cflags --libs wayland-client xkbcommon) -Wall -Wextra -lm/` |
+| 5 | Add a note about the new flags | Append a line after the GCC block: “*Note: `-Wall -Wextra` are added to enable common warnings.*”. | `:28put ='*Note: `-Wall -Wextra` are added to enable common warnings.*'` |
+| 6 | Verify Makefile respects `CFLAGS` / `LDFLAGS` (optional) | Open `Makefile`; ensure it uses `$(CFLAGS)` and `$(LDFLAGS)`. If not, modify to: `CFLAGS += -Wall -Wextra` and `LDFLAGS += -lm`. | `:e Makefile` → edit accordingly. |
+| 7 | Update the “Prerequisites” section with other distro hints | Add a short bullet after the existing list: `- For Fedora: `dnf install wayland-devel libxkbcommon-devel gcc pkgconf-pkg-config``. | `:/### Prerequisites` → go to that line, then `:normal o- For Fedora: \`dnf install wayland-devel libxkbcommon-devel gcc pkgconf-pkg-config\`` |
+| 8 | Add a note that `bear` must be installed for the compilation database | Insert after line 78: `*Make sure `bear` is installed (`sudo apt-get install bear`).*`. | `:78put ='*Make sure `bear` is installed (`sudo apt-get install bear`).*'` |
+| 9 | Run a quick visual check | Reload the file (`:e`) and scroll through to confirm headings line up with TOC entries and the underline is correct. | `:e` |
+|10| Commit the changes | Use git to stage and commit the updated README (and Makefile if edited). | ```sh<br>git add README.md Makefile<br>git commit -m "Fix README formatting, add TOC, improve GCC flags"<br>``` |
+
+**Next step**  
+Open the README in Neovim (`:e README.md`) and apply steps 1‑5. Let me know if you run into any mismatched anchors or need help editing the Makefile.
+
 ## Objective
 Enhance the minimal Wayland client example by improving documentation, providing build helpers, cleaning up the build process, and polishing the Nix flake.
 
